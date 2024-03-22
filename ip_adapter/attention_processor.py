@@ -144,7 +144,7 @@ class IPAttnProcessor(nn.Module):
         if encoder_hidden_states is None:
             encoder_hidden_states = hidden_states
         else:
-            # get encoder_hidden_states, ip_hidden_states
+            # 传入的是二者的.cat; 此时划分为： encoder_hidden_states, ip_hidden_states
             end_pos = encoder_hidden_states.shape[1] - self.num_tokens
             encoder_hidden_states, ip_hidden_states = encoder_hidden_states[:, :end_pos, :], encoder_hidden_states[:, end_pos:, :]
             if attn.norm_cross:

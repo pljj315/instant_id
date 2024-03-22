@@ -83,8 +83,8 @@ class Resampler(nn.Module):
         dim_head=64,
         heads=16,
         num_queries=8,
-        embedding_dim=768,
-        output_dim=1024,
+        embedding_dim=1536, # 输入的embed 维度
+        output_dim=1024,   # 输出的embed 维度
         ff_mult=4,
     ):
         super().__init__()
@@ -119,3 +119,32 @@ class Resampler(nn.Module):
             
         latents = self.proj_out(latents)
         return self.norm_out(latents)
+
+class ImageProjModel(torch.nn.Module):
+    """Projection Model"""
+
+    def __init__(self, cross_attention_dim=1024, clip_embeddings_dim=1024, clip_extra_context_tokens=4):
+        super().__init__()
+
+        self.generator = None
+        self.cross_attention_dim = cross_attention_dim
+        self.clip_extra_context_tokens = clip_extra_context_tokens
+        self.proj = torch.nn.Linear(clip_embeddings_dim, self.clip_extra_context_tokens * cross_attention_dim)
+        self.norm = torch.nn.LayerNorm(cross_attention_dim)
+
+    def forward(self, image_embeds):
+        embeds = image_embeds
+        clip_extra_context_tokens = self.proj(embeds) #torch.Size([1, 3072])
+        print('=======',clip_extra_context_tokens.shape)
+        clip_extra_context_tokens = clip_extra_context_tokens.reshape(
+            -1, self.clip_extra_context_tokens, self.cross_attention_dim)# torch.Size([1, 4, 768])
+        # # modify: 
+        # clip_extra_context_tokens = torch.cat([ clip_extra_context_tokens[:,0,:].unsqueeze(1),\
+        #                                         clip_extra_context_tokens[:,0,:].unsqueeze(1),\
+        #                                         clip_extra_context_tokens[:,0,:].unsqueeze(1),\
+        #                                         clip_extra_context_tokens[:,1,:].unsqueeze(1),],  dim=1)
+        # print('=======',clip_extra_context_tokens.shape)
+        # clip_extra_context_tokens = clip_extra_context_tokens[:, 3, :].unsqueeze(1).repeat(1, 4, 1)
+        # # ++++++++
+        clip_extra_context_tokens = self.norm(clip_extra_context_tokens)
+        return clip_extra_context_tokens
